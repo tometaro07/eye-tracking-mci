@@ -107,7 +107,7 @@ for d in data:
     
     for i in range(len(d)):
         if d[i].encoding is not None:
-            d[i].build_scanpath(crop = ((1600-700)/2, (900-700)/2,1600-(1600-700)/2, 900-(900-700)/2))
+            d[i].build_scanpath(crop = ((1600-700)/2, (900-700)/2,1600-(1600-700)/2, 900-(900-700)/2), resize=(512,512))
     
     with open(f'{PROCCESS_DIR}{directory}{group}_s{subject}.pkl', 'wb') as file:
         pickle.dump(d, file)

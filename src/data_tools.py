@@ -55,17 +55,16 @@ class Trial:
             draw.regular_polygon(bounding_circle=(coord,point_size),
                     n_sides=20 , fill=0, width = point_size)
         
-        scan_path = scan_path.resize(resize) if resize else scan_path
         scan_path = scan_path.crop(crop) if crop else scan_path
+        scan_path = scan_path.resize(resize) if resize else scan_path
         
         self.encodingScanPath = scan_path
 
 class VTNet_Dataset (Dataset):
 
-    def __init__(self, scanpaths = [], rawdata = [], groups = [], subject = []):
+    def __init__(self, path='', scanpaths = [], rawdata = [], groups = [], subject = []):
         
         if len(scanpaths)==0:
-            path = '../processed_data/'
 
             self.scanpaths = []
             self.rawdata = []
@@ -90,10 +89,13 @@ class VTNet_Dataset (Dataset):
             max_len = max(map(new_len,self.rawdata))
             self.rawdata = np.array([np.pad(rd,((max_len-len(rd),0),(0,0)),constant_values=0) if hasattr(rd, '__iter__') else None for rd in self.rawdata], dtype=object)[self.groups!=None]
             self.rawdata = torch.tensor(np.array(list(self.rawdata)), dtype=torch.float32)
-            self.rawdata[:,:,[3,6]] = (self.rawdata[:,:,[3,6]]-torch.unsqueeze(torch.mean(self.rawdata[:,:,[3,6]],dim=1),dim=1))/(torch.unsqueeze(torch.std(self.rawdata[:,:,[3,6]],dim=1),dim=1)+1e-10)
+            
+            
             self.rawdata[:,:,0] = self.rawdata[:,:,0]/1500 - 1
             self.rawdata[:,:,[1,4]] = self.rawdata[:,:,[1,4]]/800 -1
             self.rawdata[:,:,[2,5]] = self.rawdata[:,:,[2,5]]/450 - 1
+            
+            
             self.subject = torch.tensor(np.array(self.subject)[self.groups!=None].astype(int))
             self.scanpaths = np.array(self.scanpaths, dtype=object)[self.groups!=None]
             self.scanpaths=[pil_to_tensor(rd) for rd in self.scanpaths]
