@@ -14,8 +14,8 @@ import pickle
 from data_tools import *
 
 
-DATA_DIR = '/home/tometaro/Documents/Thesis/data/'
-UNPROCESS_DIR = '/home/tometaro/Documents/Thesis/processed_data/raw/'
+DATA_DIR = ''
+UNPROCESS_DIR = ''
 
 
 for group in ['control', 'patient']:
