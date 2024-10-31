@@ -132,7 +132,7 @@ class VTNet_Dataset(Dataset):
                 with open(path+file, 'rb+') as f:
                     self.rawdata += list(map(lambda x: x.encoding[:,[0,3,4,5,6,7,8]] if x.encoding is not None else None,pickle.load(f)))
                 with open(path+file, 'rb+') as f:
-                    self.groups += list(map(lambda x: (0 if x.group[0]=='c' else 1) if x.encoding is not None else None,pickle.load(f)))
+                    self.groups += list(map(lambda x: (1 if x.group[0]=='c' else 0) if x.encoding is not None else None,pickle.load(f)))
                 with open(path+file, 'rb+') as f:
                     self.subject += list(map(lambda x: x.subject if x.encoding is not None else None,pickle.load(f)))
                 with open(path+file, 'rb+') as f:
