@@ -2,6 +2,8 @@
 seed = 42
 
 import os
+
+from matplotlib import pyplot as plt
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ['PYTHONHASHSEED'] = str(seed)
 os.environ['MPLCONFIGDIR'] = os.getcwd()+'/configs/'
@@ -19,11 +21,12 @@ import logging
 
 import pickle
 import os
+import psutil
 
 from data_tools import *
 
-PROCCESS_DIR = '/home/tometaro/Documents/Thesis/processed_data/processed/'
-UNPROCESS_DIR = '/home/tometaro/Documents/Thesis/processed_data/raw/'
+PROCCESS_DIR = ''
+UNPROCESS_DIR = ''
 
 # LOAD DATA
 
@@ -40,6 +43,7 @@ encoding=''
 recognition = ''
 for i in range(len(data)):
     for j in range(len(data[i])):
+        
         guide = np.any(np.isnan(data[i][j].encoding),axis=1)
         
         if np.sum(guide)>len(data[i][j].encoding)*0.2:
@@ -62,52 +66,75 @@ with open("enconding_removed.txt", 'w') as output:
 with open("recognition_removed.txt", 'w') as output:
     output.write(recognition)
 
-
-# REMOVE BEST AND WORST PERFORMERS
-
 results={'control':{},'patient': {}}
-
-max_control=(0,-np.inf)
-max_patient=(0,-np.inf)
-min_control=(0,np.inf)
-min_patient=(0,np.inf)
+lists ={'control':[],'patient':[]}
 
 for i in range(len(data)):
     group = data[i][0].group
-    subject = data[i][0].subject
-    results[group][subject] = 0
+    subject = int(data[i][0].subject)
     for j in range(len(data[i])):
-        results[group][subject] += data[i][j].isCorrect
+        if data[i][j].encoding is not None:
+            if subject not in list(results[group].keys()):
+                results[group][subject] = []
+            results[group][subject] += [data[i][j].isCorrect]
+
+new_sub = []
+for i in range(len(data)):
+    if data[i][0].subject not in new_sub:
+        new_sub += [data[i][0].subject]
+        lists[data[i][0].group] += [data[i][0].trial.split('_')[0]]
+
+
+s={'control':{},'patient':{}}
+
+for g in results.keys():
+    for t in results[g].keys():
+        s[g][t] = len(results[g][t])
+        results[g][t]=np.mean(results[g][t])
+
+total_s = [sum(list(s['control'].values())), sum(list(s['patient'].values()))]
+
+min_group, min_value = np.argmin(total_s), np.min(total_s)
+max_group, max_value = 1-min_group, total_s[1-min_group]
+
+min_group = 'control' if min_group==0 else 'patient'
+max_group = 'control' if max_group==0 else 'patient'
+
+max_sub, max_val = list(results[max_group].keys())[np.argmax(list(results[max_group].values()))] , np.max(list(results[max_group].values())) 
+
+while min_value < max_value-s[max_group][max_sub]:
+    print(results[max_group].pop(max_sub), max_group, max_sub, )
     
-    if subject%1==0:
-        if group == 'control':
-            max_control = (i,results[group][subject]) if results[group][subject]>max_control[1] else max_control
-            min_control = (i,results[group][subject]) if results[group][subject]<min_control[1] else min_control
-        else:
-            max_patient = (i,results[group][subject]) if results[group][subject]>max_patient[1] else max_patient
-            min_patient = (i,results[group][subject]) if results[group][subject]<min_patient[1] else min_patient
-            
-print(f'Worst Performer - Patients: {data[min_patient[0]][0].subject} with {min_patient[1]} correct answers')
-print(f'Best Performer - Patients: {data[max_patient[0]][0].subject} with {max_patient[1]} correct answers')
-print(f'Worst Performer - Controls: {data[min_control[0]][0].subject} with {min_control[1]} correct answers')
-print(f'Best Performer - Controls: {data[max_control[0]][0].subject} with {max_control[1]} correct answers')
-
-data.pop(min_patient[0])
-data.pop(max_patient[0])
-data.pop(min_control[0])
-data.pop(max_control[0])
+    max_value -= s[max_group][max_sub]
+    
+    s[max_group].pop(max_sub)
+    
+    max_sub, max_val = list(results[max_group].keys())[np.argmax(list(results[max_group].values()))] , np.max(list(results[max_group].values()))
+    
+print(max_value, min_value, max_value + min_value)
 
 
+for i in range(len(data)-1,-1,-1):
+    if int(data[i][0].subject) not in list(s[max_group].keys()) and data[i][0].group == max_group:
+        print(data[i][0].subject, data[i][0].group)
+        data.pop(i)
+
+del results, encoding, output, s, min_group, min_value, max_group, max_value, max_sub, max_val
 # SAVE DATA
+j=0
 
-for d in data:
-    group=d[0].group
-    subject=int(d[0].subject//1)
-    directory = 'first/' if d[0].subject%1==0 else 'second/'
+for k in range(len(data)-1,-1,-1):
+    group=data[k][0].group
+    subject=int(data[k][0].subject//1)
+    alter = '' if data[k][0].subject%1 == 0 else '_5'
+    directory = ''
     
-    for i in range(len(d)):
-        if d[i].encoding is not None:
-            d[i].build_scanpath(crop = ((1600-700)/2, (900-700)/2,1600-(1600-700)/2, 900-(900-700)/2), resize=(512,512))
-    
-    with open(f'{PROCCESS_DIR}{directory}{group}_s{subject}.pkl', 'wb') as file:
-        pickle.dump(d, file)
+    for i in range(len(data[k])):
+        if data[k][i].encoding is not None:
+            data[k][i].build_scanpath(resize=(256,256))
+            data[k][i].build_heatmap(distance=57, angle=1,resize=(256,256))
+
+    j+=1
+    print(j)
+    with open(f'{PROCCESS_DIR}{directory}{group}_s{subject}{alter}.pkl', 'wb') as file:
+        pickle.dump(data.pop(k), file)
